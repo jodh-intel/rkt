@@ -40,6 +40,6 @@ func TestCommandsNeedRoot(t *testing.T) {
 	defer ctx.Cleanup()
 	for _, sc := range rootRequiringCommands {
 		cmd := fmt.Sprintf("%s %s", ctx.Cmd(), sc)
-		runRktAsUidGidAndCheckOutput(t, cmd, "cannot run as unprivileged user", true, nobodyUid, nobodyGid)
+		runRktAsUidGidAndCheckOutput(t, cmd, []string{"cannot run as unprivileged user"}, true, nobodyUid, nobodyGid)
 	}
 }
