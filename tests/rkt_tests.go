@@ -117,8 +117,10 @@ func expectWithOutputGetAll(p *gexpect.ExpectSubprocess) ([]string, error) {
 }
 
 // expectWithOutput obtains all output from the sub-process then checks
-// to ensure that all strings in the provided array match
+// to ensure that all strings in the provided array are contained in
 // the output lines atleast once.
+//
+// Note: A substring match is performed.
 func expectWithOutputArray(p *gexpect.ExpectSubprocess, searchStrings []string) error {
 	lines, err := expectWithOutputGetAll(p)
 	if err != nil {
@@ -554,6 +556,10 @@ func runRktAndCheckRegexOutput(t *testing.T, rktCmd, match string) error {
 func runRktAndCheckOutput(t *testing.T, rktCmd, expectedLine string, expectError bool) {
 	a := []string{expectedLine}
 	runRktAsGidAndCheckOutputArray(t, rktCmd, a, expectError, 0)
+}
+
+func runRktAndCheckOutputArray(t *testing.T, rktCmd string, expectedLines []string, expectError bool) {
+	runRktAsGidAndCheckOutputArray(t, rktCmd, expectedLines, expectError, 0)
 }
 
 func startRktAndCheckOutput(t *testing.T, rktCmd, expectedLine string) *gexpect.ExpectSubprocess {
