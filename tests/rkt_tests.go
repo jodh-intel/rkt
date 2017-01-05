@@ -343,6 +343,10 @@ func runRktAsGidAndCheckOutput(t *testing.T, rktCmd, expectedLine string, expect
 	runRktAsUidGidAndCheckOutput(t, rktCmd, expectedLine, false, expectError, nobodyUid, gid)
 }
 
+func runRktAsGidAndCheckREOutput(t *testing.T, rktCmd, expectedLine string, expectError bool, gid int) {
+	runRktAsUidGidAndCheckOutput(t, rktCmd, expectedLine, true, expectError, nobodyUid, gid)
+}
+
 func runRktAsUidGidAndCheckOutput(t *testing.T, rktCmd, expectedLine string, lineIsRegex, expectError bool, uid, gid int) {
 	child, err := gexpect.Command(rktCmd)
 	if err != nil {
@@ -473,6 +477,10 @@ func runRktAndCheckRegexOutput(t *testing.T, rktCmd, match string) error {
 
 func runRktAndCheckOutput(t *testing.T, rktCmd, expectedLine string, expectError bool) {
 	runRktAsGidAndCheckOutput(t, rktCmd, expectedLine, expectError, 0)
+}
+
+func runRktAndCheckREOutput(t *testing.T, rktCmd, expectedLine string, expectError bool) {
+	runRktAsGidAndCheckREOutput(t, rktCmd, expectedLine, expectError, 0)
 }
 
 func startRktAndCheckOutput(t *testing.T, rktCmd, expectedLine string) *gexpect.ExpectSubprocess {
