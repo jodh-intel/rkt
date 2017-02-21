@@ -279,7 +279,6 @@ func getArgsEnv(p *stage1commontypes.Pod, flavor string, canMachinedRegister boo
 		// kernel and hypervisor binaries are located relative to the working directory
 		// of init (/var/lib/rkt/..../uuid)
 		// TODO: move to path.go
-		kernelPath := filepath.Join(common.Stage1RootfsPath(p.Root), "bzImage")
 		netDescriptions := kvm.GetNetworkDescriptions(n)
 
 		cpu, mem := kvm.GetAppsResources(p.Manifest.Apps)
@@ -292,14 +291,17 @@ func getArgsEnv(p *stage1commontypes.Pod, flavor string, canMachinedRegister boo
 
 		// Set start command for hypervisor
 		StartCmd := hvlkvm.StartCmd
+		kernelName := "bzImage"
 		switch hv {
 		case "lkvm":
 			StartCmd = hvlkvm.StartCmd
 		case "qemu":
 			StartCmd = hvqemu.StartCmd
+			kernelName = "vmlinux"
 		default:
 			return nil, nil, fmt.Errorf("unrecognized hypervisor")
 		}
+		kernelPath := filepath.Join(common.Stage1RootfsPath(p.Root), kernelName)
 
 		hvStartCmd := StartCmd(
 			common.Stage1RootfsPath(p.Root),

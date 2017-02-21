@@ -24,6 +24,14 @@ import (
 	"github.com/coreos/rkt/stage1/init/kvm/hypervisor"
 )
 
+// roundUpToMultiple rounds the specified number up to the nearest
+// provided multiple.
+//
+// For example, specifying (num=9, multiple=8) returns 16.
+func roundUpToMultiple(num, multiple int64) int64 {
+	return (num + (multiple - 1)) & ^(multiple - 1)
+}
+
 // StartCmd takes path to stage1, name of the machine, path to kernel, network describers, memory in megabytes
 // and quantity of cpus and prepares command line to run QEMU process
 func StartCmd(wdPath, name, kernelPath string, nds []kvm.NetDescriber, cpu, mem int64, debug bool) []string {
@@ -37,20 +45,57 @@ func StartCmd(wdPath, name, kernelPath string, nds []kvm.NetDescriber, cpu, mem 
 				"rw",
 				"systemd.default_standard_error=journal+console",
 				"systemd.default_standard_output=journal+console",
+				"tsc=reliable",
+				"no_timer_check",
+				"rcupdate.rcu_expedited=1",
+				"i8042.direct=1",
+				"i8042.dumbkbd=1",
+				"i8042.nopnp=1",
+				"i8042.noaux=1",
+				"noreplace-smp",
+				"reboot=k",
+				"panic=1",
+				"console=hvc0",
+				"console=hvc1",
+				"initcall_debug",
+				"iommu=off",
+				"quiet",
+				"cryptomgr.notests",
 			},
 		}
 	)
 
 	driverConfiguration.InitKernelParams(debug)
 
+	cpuStr := strconv.FormatInt(cpu, 10)
+
+	// Allow one extra GiB of memory
+	// (qemu requires maxmem to be rounded on a 4k boundary)
+
+	gib := int64(1024 * 1024 * 1024)
+	maxMem := roundUpToMultiple(mem+gib, int64(4096))
+	maxMemStr := strconv.FormatInt(maxMem, 10)
+
 	cmd := []string{
 		filepath.Join(wdPath, driverConfiguration.Bin),
 		"-L", wdPath,
 		"-no-reboot",
-		"-display", "none",
+		"-vga", "none",
+		"-nographic",
 		"-enable-kvm",
-		"-smp", strconv.FormatInt(cpu, 10),
-		"-m", strconv.FormatInt(mem, 10),
+
+		// Minimise overhead; the kernel does not perform
+		// well with multi-socket qemu.
+		"-smp", fmt.Sprintf("%s,sockets=1,cores=%s,threads=1", cpuStr, cpuStr),
+
+		// Slots is set to two since:
+		//
+		// - slot 1 represents normal memory.
+		// - slot 2 represents NVDIMM.
+		//
+		// XXX: maxmem must be larger than the sum of normal memory and nvdimm.
+		"-m", fmt.Sprintf("%s,slots=2,maxmem=%s", strconv.FormatInt(mem, 10), maxMemStr),
+
 		"-kernel", kernelPath,
 		"-fsdev", "local,id=root,path=stage1/rootfs,security_model=none",
 		"-device", "virtio-9p-pci,fsdev=root,mount_tag=/dev/root",
@@ -58,7 +103,14 @@ func StartCmd(wdPath, name, kernelPath string, nds []kvm.NetDescriber, cpu, mem 
 		"-chardev", "stdio,id=virtiocon0,signal=off",
 		"-device", "virtio-serial",
 		"-device", "virtconsole,chardev=virtiocon0",
+		"-machine", "pc-lite,accel=kvm,kernel_irqchip,nvdimm",
+		"-cpu", "host",
+		"-rtc", "base=utc,driftfix=slew",
+		"-no-user-config",
+		"-nodefaults",
+		"-global", "kvm-pit.lost_tick_policy=discard",
 	}
+
 	return append(cmd, kvmNetArgs(nds)...)
 }
 
@@ -70,9 +122,9 @@ func kvmNetArgs(nds []kvm.NetDescriber) []string {
 	var qemuArgs []string
 
 	for _, nd := range nds {
-		qemuArgs = append(qemuArgs, []string{"-net", "nic,model=virtio"}...)
-		qemuNic := fmt.Sprintf("tap,ifname=%s,script=no,downscript=no,vhost=on", nd.IfName())
-		qemuArgs = append(qemuArgs, []string{"-net", qemuNic}...)
+		qemuArgs = append(qemuArgs, []string{"-device", "driver=virtio-net-pci,netdev=testnet0"}...)
+		qemuNic := fmt.Sprintf("tap,id=testnet0,ifname=%s,script=no,downscript=no,vhost=on", nd.IfName())
+		qemuArgs = append(qemuArgs, []string{"-netdev", qemuNic}...)
 	}
 
 	return qemuArgs

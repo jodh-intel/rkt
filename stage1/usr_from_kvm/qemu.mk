@@ -9,17 +9,87 @@ QEMU_BIOS_BINARIES := bios-256k.bin \
     vgabios-stdvga.bin \
     efi-virtio.rom
 
-QEMU_CONFIGURATION_OPTS := --disable-bsd-user --disable-docs --disable-guest-agent --disable-guest-agent-msi \
-    --disable-sdl --disable-gtk --disable-vte --disable-curses --disable-cocoa --disable-brlapi --disable-vnc \
-    --disable-seccomp --disable-curl --disable-bluez --disable-cap-ng --disable-rbd --disable-libiscsi \
-    --disable-libnfs --disable-smartcard --disable-libusb --disable-glusterfs --disable-archipelago \
-    --disable-tcmalloc --disable-jemalloc --disable-debug-info --static --enable-virtfs --target-list=x86_64-softmmu \
-    --python=/usr/bin/python2 --disable-werror --disable-opengl --disable-usb-redir
+# Disable all possible non-essential features
+QEMU_CONFIGURATION_OPTS := \
+    --disable-archipelago \
+    --disable-bluez \
+    --disable-brlapi \
+    --disable-bsd-user \
+    --disable-bzip2 \
+    --disable-cocoa \
+    --disable-curl \
+    --disable-curses \
+    --disable-debug-info \
+    --disable-debug-tcg \
+    --disable-docs \
+    --disable-fdt \
+    --disable-glusterfs \
+    --disable-gtk \
+    --disable-guest-agent \
+    --disable-guest-agent-msi \
+    --disable-jemalloc \
+    --disable-libiscsi \
+    --disable-libnfs \
+    --disable-libssh2 \
+    --disable-libusb \
+    --disable-linux-aio \
+    --disable-lzo \
+    --disable-opengl \
+    --disable-qom-cast-debug \
+    --disable-rbd \
+    --disable-rdma \
+    --disable-sdl \
+    --disable-seccomp \
+    --disable-slirp \
+    --disable-smartcard \
+    --disable-snappy \
+    --disable-spice \
+    --disable-strip \
+    --disable-tcg-interpreter \
+    --disable-tcmalloc \
+    --disable-tools \
+    --disable-tpm \
+    --disable-usb-redir \
+    --disable-uuid \
+    --disable-vhdx \
+    --disable-vnc \
+    --disable-vnc-jpeg \
+    --disable-vnc-png \
+    --disable-vnc-sasl \
+    --disable-vte \
+    --disable-werror \
+    --disable-xen
+
+# only used by QEMU Bridge Helper
+QEMU_CONFIGURATION_OPTS += --disable-cap-ng
+
+# default, but be explicit
+QEMU_CONFIGURATION_OPTS += --enable-kvm
+
+# required for 9p
+QEMU_CONFIGURATION_OPTS += --enable-virtfs
+
+# required for virtfs
+QEMU_CONFIGURATION_OPTS += --enable-attr
+
+# required for container networking
+QEMU_CONFIGURATION_OPTS += --enable-vhost-net
+
+# specify target build architecture
+QEMU_CONFIGURATION_OPTS += --target-list=x86_64-softmmu
+
+# required by qemu to generate content at build time
+QEMU_CONFIGURATION_OPTS += --python=/usr/bin/python2
+
+# Ensure the hypervisor is statically-linked
+# (required by rkt to simplify binary distribution).
+##QEMU_CONFIGURATION_OPTS += --static
+
 QEMU_ACI_BINARY := $(HV_ACIROOTFSDIR)/qemu
 
 # Using 2.7.0 stable release from official repository
-QEMU_GIT := git://git.qemu-project.org/qemu.git
-QEMU_GIT_COMMIT := v2.8.0
+QEMU_GIT := https://github.com/01org/qemu-lite.git
+QEMU_GIT_COMMIT := qemu-2.7-lite
 
 $(call setup-stamp-file,QEMU_BUILD_STAMP,/build)
 $(call setup-stamp-file,QEMU_BIOS_BUILD_STAMP,/bios_build)
