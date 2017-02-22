@@ -19,7 +19,7 @@ KERNEL_VMLINUX := $(KERNEL_BUILDDIR)/vmlinux
 KERNEL_ACI_VMLINUX := $(S1_RF_ACIROOTFSDIR)/vmlinux
 
 $(call setup-stamp-file,KERNEL_STAMP,/build_kernel)
-$(call setup-stamp-file,KERNEL_BZIMAGE_STAMP,/bzimage)
+$(call setup-stamp-file,KERNEL_IMAGES_STAMP,/kernel_images)
 $(call setup-stamp-file,KERNEL_PATCH_STAMP,/patch_kernel)
 $(call setup-stamp-file,KERNEL_DEPS_STAMP,/deps)
 $(call setup-dep-file,KERNEL_PATCHES_DEPMK)
@@ -36,11 +36,18 @@ CLEAN_FILES += $(KERNEL_TARGET_FILE)
 $(call generate-stamp-rule,$(KERNEL_STAMP),$(KERNEL_ACI_BZIMAGE) $(KERNEL_ACI_VMLINUX) $(KERNEL_DEPS_STAMP))
 
 # $(KERNEL_ACI_BZIMAGE) has a dependency on $(KERNEL_BZIMAGE), which
-# is actually provided by $(KERNEL_BZIMAGE_STAMP)
-$(KERNEL_BZIMAGE): $(KERNEL_BZIMAGE_STAMP)
+# is actually provided by $(KERNEL_IMAGES_STAMP)
+#
+# Ensure both kernel images are handled together - without this chained
+# dependency, "make -j" fails.
+#
+# The first dependency captures the fact that bzImage is generated after
+# vmlinux (which is always built).
+$(KERNEL_BZIMAGE): $(KERNEL_VMLINUX)
+$(KERNEL_VMLINUX): $(KERNEL_IMAGES_STAMP)
 
 # This stamp is to make sure that building linux kernel has finished.
-$(call generate-stamp-rule,$(KERNEL_BZIMAGE_STAMP),$(KERNEL_BUILD_CONFIG) $(KERNEL_PATCH_STAMP),, \
+$(call generate-stamp-rule,$(KERNEL_IMAGES_STAMP),$(KERNEL_BUILD_CONFIG) $(KERNEL_PATCH_STAMP),, \
 	$(call vb,vt,BUILD EXT,bzImage) \
 	$$(MAKE) $(call vl2,--silent) -C "$(KERNEL_SRCDIR)" O="$(KERNEL_BUILDDIR)" V=0 bzImage $(call vl2,>/dev/null))
 
@@ -50,7 +57,7 @@ $(call generate-clean-mk-simple,\
 	$(KERNEL_STAMP), \
 	$(KERNEL_BUILDDIR), \
 	$(KERNEL_BUILDDIR), \
-	$(KERNEL_BZIMAGE_STAMP), \
+	$(KERNEL_IMAGES_STAMP), \
 	builddir-cleanup)
 
 $(call generate-stamp-rule,$(KERNEL_PATCH_STAMP),$(KERNEL_MAKEFILE),, \
